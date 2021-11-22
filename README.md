@@ -4,7 +4,7 @@ Flexitime is a Ruby date/time string parser with the intended purpose of convert
 
 The gem was born of the need to parse date, datetime & time strings in a multi-user environment supporting different locales and time zones. Depending upon the user's locale the UI would return date/time strings in different formats and in different orders (day/month/year or month/day/year). This variation in the ordering of the day and month parts proved to be the main catalyst to finding or creating a date/time parser. The resultant Time object needed to be created in the user's time zone and additionally the system stored times only to a minute precision. Flexitime was created to provide a simple yet flexible parser to meet these needs.
 
-![Build Status](https://github.com/CircleSD/flexitime/actions/workflows/main.yml/badge.svg?branch=main)
+![Build Status](https://github.com/CircleSD/flexitime/actions/workflows/ci.yml/badge.svg?branch=main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Installation
