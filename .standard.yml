@@ -7,4 +7,4 @@ ignore:
 # Standard will default to telling RuboCop to target the currently running version of Ruby
 # instead set this to minimum version of Ruby supported by Flexitime
 # which prevents an offence being flagged for the Style/SlicingWithRange cop that is releveant to Ruby 2.6+
-ruby_version: 2.4
+ruby_version: 2.5

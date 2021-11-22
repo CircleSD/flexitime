@@ -15,7 +15,7 @@ Gem::Specification.new do |spec|
   spec.license       = "MIT"
 
   # Minimum version of Ruby that the gem works with
-  spec.required_ruby_version = ">= 2.4.0"
+  spec.required_ruby_version = ">= 2.5.0"
 
   # Metadata used on gem’s profile page on rubygems.org
   spec.metadata["homepage_uri"] = spec.homepage
