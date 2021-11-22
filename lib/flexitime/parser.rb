@@ -168,7 +168,7 @@ module Flexitime
     def set_precision(time)
       index = PRECISIONS.index(Flexitime.configuration.precision)
       dismiss_part = PRECISIONS[index + 1]
-      excess = PRECISIONS[(index + 1)..].sum { |key| time.send(key) }
+      excess = PRECISIONS[(index + 1)..-1].sum { |key| time.send(key) }
       excess > 0 ? time.change(dismiss_part => 0) : time
     end
   end
