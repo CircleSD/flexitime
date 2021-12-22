@@ -10,7 +10,7 @@ RSpec.describe Flexitime do
     expect(Flexitime::VERSION).not_to be nil
   end
 
-  describe "#configuration" do
+  describe ".configuration" do
     it "returns default configuration values" do
       expect(Flexitime.configuration.time_class).to eq(::Time)
       expect(Flexitime.configuration.first_date_part).to eq(:day)
@@ -18,7 +18,7 @@ RSpec.describe Flexitime do
       expect(Flexitime.configuration.ambiguous_year_future_bias).to eq(50)
     end
 
-    describe ".time_class" do
+    describe "#time_class" do
       it "returns the default time class" do
         expect(Flexitime.configuration.time_class).to eq(::Time)
       end
@@ -29,7 +29,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    describe ".first_date_part" do
+    describe "#first_date_part" do
       it "returns the default first date part" do
         expect(Flexitime.configuration.instance_variable_get(:@first_date_part)).to be_nil
         expect(Flexitime.configuration.first_date_part).to eq(:day)
@@ -117,7 +117,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    describe ".precision" do
+    describe "#precision" do
       it "returns the default precision" do
         expect(Flexitime.configuration.precision).to eq(:min)
       end
@@ -143,7 +143,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    describe ".ambiguous_year_future_bias" do
+    describe "#ambiguous_year_future_bias" do
       it "returns the default ambiguous year future bias" do
         expect(Flexitime.configuration.ambiguous_year_future_bias).to eq(50)
       end
@@ -174,7 +174,7 @@ RSpec.describe Flexitime do
     end
   end
 
-  describe "#time_class" do
+  describe ".time_class" do
     it "delegates to the configuration method" do
       expect(Flexitime.time_class).to eq(::Time)
       Flexitime.time_class = ::Time.zone
@@ -183,7 +183,7 @@ RSpec.describe Flexitime do
     end
   end
 
-  describe "#first_date_part" do
+  describe ".first_date_part" do
     it "delegates to the configuration method" do
       expect(Flexitime.first_date_part).to eq(:day)
       Flexitime.first_date_part = :month
@@ -192,7 +192,7 @@ RSpec.describe Flexitime do
     end
   end
 
-  describe "#precision" do
+  describe ".precision" do
     it "delegates to the configuration method" do
       expect(Flexitime.precision).to eq(:min)
       Flexitime.precision = :sec
@@ -201,7 +201,7 @@ RSpec.describe Flexitime do
     end
   end
 
-  describe "#ambiguous_year_future_bias" do
+  describe ".ambiguous_year_future_bias" do
     it "delegates to the configuration method" do
       expect(Flexitime.ambiguous_year_future_bias).to eq(50)
       Flexitime.ambiguous_year_future_bias = 55
@@ -210,7 +210,7 @@ RSpec.describe Flexitime do
     end
   end
 
-  describe "#parse" do
+  describe ".parse" do
     it "returns nil if the string argument is blank" do
       expect(Flexitime.parse("")).to be_nil
     end
