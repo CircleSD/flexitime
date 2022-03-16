@@ -3,6 +3,7 @@
 RSpec.describe Flexitime do
   before do
     Thread.current["Flexitime.configuration"] = nil
+    Time.zone = "UTC"
     I18n.locale = :en
   end
 
@@ -12,21 +13,9 @@ RSpec.describe Flexitime do
 
   describe ".configuration" do
     it "returns default configuration values" do
-      expect(Flexitime.configuration.time_class).to eq(::Time)
       expect(Flexitime.configuration.first_date_part).to eq(:day)
       expect(Flexitime.configuration.precision).to eq(:min)
       expect(Flexitime.configuration.ambiguous_year_future_bias).to eq(50)
-    end
-
-    describe "#time_class" do
-      it "returns the default time class" do
-        expect(Flexitime.configuration.time_class).to eq(::Time)
-      end
-
-      it "sets the time class" do
-        Flexitime.configuration.time_class = ::Time.zone
-        expect(Flexitime.configuration.time_class).to eq(::Time.zone)
-      end
     end
 
     describe "#first_date_part" do
@@ -169,17 +158,8 @@ RSpec.describe Flexitime do
       }
       threads.values.each(&:join)
 
-      expect(threads[:day].value).to eq(Time.local(2021, 6, 2))
-      expect(threads[:month].value).to eq(Time.local(2021, 2, 6))
-    end
-  end
-
-  describe ".time_class" do
-    it "delegates to the configuration method" do
-      expect(Flexitime.time_class).to eq(::Time)
-      Flexitime.time_class = ::Time.zone
-      expect(Flexitime.time_class).to eq(::Time.zone)
-      expect(Flexitime.configuration.time_class).to eq(::Time.zone)
+      expect(threads[:day].value).to eq(Time.zone.local(2021, 6, 2))
+      expect(threads[:month].value).to eq(Time.zone.local(2021, 2, 6))
     end
   end
 
@@ -239,6 +219,10 @@ RSpec.describe Flexitime do
       expect(Flexitime.parse(Time.now)).to be_nil
     end
 
+    it "returns nil if the argument is a TimeWithZone" do
+      expect(Flexitime.parse(Time.zone.now)).to be_nil
+    end
+
     it "returns nil if the string argument is not a recognised format" do
       expect(Flexitime.parse("a")).to be_nil
     end
@@ -280,46 +264,73 @@ RSpec.describe Flexitime do
       expect(Flexitime.parse("2021-09-09 12:30:61")).to be_nil
     end
 
+    it "parses a string using Time.zone" do
+      flexitime = Flexitime.parse("23/08/2021 08:15")
+      expect(flexitime).to eq(Time.zone.parse("23/08/2021 08:15"))
+      expect(flexitime.utc_offset).to eq(0)
+      Time.zone = "Europe/London"
+      flexitime = Flexitime.parse("23/08/2021 08:15")
+      expect(flexitime).to eq(Time.zone.parse("23/08/2021 08:15"))
+      expect(flexitime.utc_offset).to eq(3600)
+      Time.zone = "Australia/Sydney"
+      flexitime = Flexitime.parse("23/08/2021 08:15")
+      expect(flexitime).to eq(Time.zone.parse("23/08/2021 08:15"))
+      expect(flexitime.utc_offset).to eq(36000)
+      Time.zone = "America/New_York"
+      flexitime = Flexitime.parse("23/08/2021 08:15")
+      expect(flexitime).to eq(Time.zone.parse("23/08/2021 08:15"))
+      expect(flexitime.utc_offset).to eq(-14400)
+    end
+
+    context "when Time.zone is nil" do
+      it "parses a string using a Time.zone of 'UTC'" do
+        Time.zone = nil
+        flexitime = Flexitime.parse("23/08/2021 08:15")
+        expect(flexitime).to eq(Time.zone.parse("23/08/2021 08:15"))
+        expect(Time.zone.name).to eq("UTC")
+      end
+    end
+
     context "with a date string in day/month/year order" do
       it "returns a time for a string separated by forward slashes" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("12/11/2021")
-        time = Time.local(2021, 11, 12)
+        time = Time.zone.local(2021, 11, 12)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a string separated by hyphens" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("12-11-2021")
-        time = Time.local(2021, 11, 12)
+        time = Time.zone.local(2021, 11, 12)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a string separated by periods" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("12.11.2021")
-        time = Time.local(2021, 11, 12)
+        time = Time.zone.local(2021, 11, 12)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a string including single digit day and month" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("8/2/2021")
-        time = Time.local(2021, 2, 8)
+        time = Time.zone.local(2021, 2, 8)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a string including 2 digit year" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("08/02/21")
-        time = Time.local(2021, 2, 8)
+        time = Time.zone.local(2021, 2, 8)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a string including single digit day & month and 2 digit year" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("8/2/21")
-        time = Time.local(2021, 2, 8)
+        time = Time.zone.local(2021, 2, 8)
         expect(flexitime).to eq(time)
       end
     end
@@ -328,28 +339,28 @@ RSpec.describe Flexitime do
       it "returns a time for a string separated by forward slashes" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("2021/11/12")
-        time = Time.local(2021, 11, 12)
+        time = Time.zone.local(2021, 11, 12)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a string separated by hyphens" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("2021-11-12")
-        time = Time.local(2021, 11, 12)
+        time = Time.zone.local(2021, 11, 12)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a string separated by periods" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("2021.11.12")
-        time = Time.local(2021, 11, 12)
+        time = Time.zone.local(2021, 11, 12)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a string including single digit day and month" do
         expect(Flexitime).to receive(:create_time_from_parts).and_call_original
         flexitime = Flexitime.parse("2021/2/8")
-        time = Time.local(2021, 2, 8)
+        time = Time.zone.local(2021, 2, 8)
         expect(flexitime).to eq(time)
       end
     end
@@ -360,7 +371,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021/11/12 08:15:30")
-          time = Time.local(2021, 11, 12, 8, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -368,7 +379,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021/11/12 08:15:30 AM")
-          time = Time.local(2021, 11, 12, 8, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -376,7 +387,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021/11/12 08:15:30 PM")
-          time = Time.local(2021, 11, 12, 20, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 20, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -384,7 +395,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021/11/12 08:15:30 am")
-          time = Time.local(2021, 11, 12, 8, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -392,7 +403,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021/11/12 08:15:30 pm")
-          time = Time.local(2021, 11, 12, 20, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 20, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -400,7 +411,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021/11/12 08:15:30AM")
-          time = Time.local(2021, 11, 12, 8, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -408,7 +419,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021/11/12 08:15:30PM")
-          time = Time.local(2021, 11, 12, 20, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 20, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -416,7 +427,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("12/11/2021 8:15:30")
-          time = Time.local(2021, 11, 12, 8, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -424,7 +435,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("12/11/2021 8:15:30 PM")
-          time = Time.local(2021, 11, 12, 20, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 20, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -432,7 +443,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("12/11/2021  08:15:30  ")
-          time = Time.local(2021, 11, 12, 8, 15, 30)
+          time = Time.zone.local(2021, 11, 12, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
       end
@@ -442,49 +453,49 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021/11/12 08:15")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including uppercase AM" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08:15 AM")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including uppercase PM" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08:15 PM")
-          time = Time.local(2021, 11, 12, 20, 15)
+          time = Time.zone.local(2021, 11, 12, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including lowercase am" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08:15am")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including lowercase pm" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08:15pm")
-          time = Time.local(2021, 11, 12, 20, 15)
+          time = Time.zone.local(2021, 11, 12, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including AM without a space separator" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08:15AM")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including PM without a space separator" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08:15PM")
-          time = Time.local(2021, 11, 12, 20, 15)
+          time = Time.zone.local(2021, 11, 12, 20, 15)
           expect(flexitime).to eq(time)
         end
 
@@ -492,7 +503,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("12/11/2021 8:15")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
@@ -500,14 +511,14 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("12/11/2021 8:15 PM")
-          time = Time.local(2021, 11, 12, 20, 15)
+          time = Time.zone.local(2021, 11, 12, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string with the time surrounded by white space" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("12/11/2021  08:15  ")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
       end
@@ -517,49 +528,49 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021/11/12 08.15")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including uppercase AM" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08.15 AM")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including uppercase PM" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08.15 PM")
-          time = Time.local(2021, 11, 12, 20, 15)
+          time = Time.zone.local(2021, 11, 12, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including lowercase am" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08.15am")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including lowercase pm" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08.15pm")
-          time = Time.local(2021, 11, 12, 20, 15)
+          time = Time.zone.local(2021, 11, 12, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including AM without a space separator" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08.15AM")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including PM without a space separator" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021/11/12 08.15PM")
-          time = Time.local(2021, 11, 12, 20, 15)
+          time = Time.zone.local(2021, 11, 12, 20, 15)
           expect(flexitime).to eq(time)
         end
 
@@ -567,7 +578,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("12/11/2021 8.15")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
 
@@ -575,14 +586,14 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("12/11/2021 8.15 PM")
-          time = Time.local(2021, 11, 12, 20, 15)
+          time = Time.zone.local(2021, 11, 12, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string with the time surrounded by white space" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("12/11/2021  08.15  ")
-          time = Time.local(2021, 11, 12, 8, 15)
+          time = Time.zone.local(2021, 11, 12, 8, 15)
           expect(flexitime).to eq(time)
         end
       end
@@ -592,7 +603,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :usec
           flexitime = Flexitime.parse("2021-11-12T08:15:30.144515Z")
-          time = Time.utc(2021, 11, 12, 8, 15, 30, 144515).getlocal
+          time = Time.utc(2021, 11, 12, 8, 15, 30, 144515).in_time_zone
           expect(flexitime).to eq(time)
         end
 
@@ -600,7 +611,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :usec
           flexitime = Flexitime.parse("2021-11-12T08:15:30.14451Z")
-          time = Time.utc(2021, 11, 12, 8, 15, 30, 14451).getlocal
+          time = Time.utc(2021, 11, 12, 8, 15, 30, 14451).in_time_zone
           expect(flexitime).to eq(time)
         end
 
@@ -608,7 +619,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :usec
           flexitime = Flexitime.parse("2021-11-12T10:15:30.1445Z")
-          time = Time.utc(2021, 11, 12, 10, 15, 30, 1445).getlocal
+          time = Time.utc(2021, 11, 12, 10, 15, 30, 1445).in_time_zone
           expect(flexitime).to eq(time)
         end
 
@@ -616,7 +627,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :usec
           flexitime = Flexitime.parse("2021-11-12T12:15:30.144Z")
-          time = Time.utc(2021, 11, 12, 12, 15, 30, 144).getlocal
+          time = Time.utc(2021, 11, 12, 12, 15, 30, 144).in_time_zone
           expect(flexitime).to eq(time)
         end
 
@@ -624,7 +635,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :usec
           flexitime = Flexitime.parse("2021-11-12T14:15:30.14Z")
-          time = Time.utc(2021, 11, 12, 14, 15, 30, 14).getlocal
+          time = Time.utc(2021, 11, 12, 14, 15, 30, 14).in_time_zone
           expect(flexitime).to eq(time)
         end
 
@@ -632,21 +643,21 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :usec
           flexitime = Flexitime.parse("2021-11-12T16:15:30.1Z")
-          time = Time.utc(2021, 11, 12, 16, 15, 30, 1).getlocal
+          time = Time.utc(2021, 11, 12, 16, 15, 30, 1).in_time_zone
           expect(flexitime).to eq(time)
         end
       end
     end
 
     context "with a time string" do
-      let(:now) { Time.now }
+      let(:now) { Time.zone.now }
 
       context "including hour, minute and second separated by colons" do
         it "returns a time" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("08:15:30")
-          time = Time.local(now.year, now.month, now.day, 8, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -654,7 +665,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("08:15:30 AM")
-          time = Time.local(now.year, now.month, now.day, 8, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -662,7 +673,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("08:15:30 PM")
-          time = Time.local(now.year, now.month, now.day, 20, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -670,7 +681,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("08:15:30 am")
-          time = Time.local(now.year, now.month, now.day, 8, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -678,7 +689,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("08:15:30 pm")
-          time = Time.local(now.year, now.month, now.day, 20, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -686,7 +697,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("08:15:30AM")
-          time = Time.local(now.year, now.month, now.day, 8, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -694,7 +705,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("08:15:30PM")
-          time = Time.local(now.year, now.month, now.day, 20, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -702,7 +713,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("8:15:30")
-          time = Time.local(now.year, now.month, now.day, 8, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -710,7 +721,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("8:15:30 PM")
-          time = Time.local(now.year, now.month, now.day, 20, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15, 30)
           expect(flexitime).to eq(time)
         end
 
@@ -718,7 +729,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("  08:15:30  ")
-          time = Time.local(now.year, now.month, now.day, 8, 15, 30)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15, 30)
           expect(flexitime).to eq(time)
         end
       end
@@ -728,49 +739,49 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("08:15")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including uppercase AM" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08:15 AM")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including uppercase PM" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08:15 PM")
-          time = Time.local(now.year, now.month, now.day, 20, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including lowercase am" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08:15am")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including lowercase pm" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08:15pm")
-          time = Time.local(now.year, now.month, now.day, 20, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including AM without a space separator" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08:15AM")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including PM without a space separator" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08:15PM")
-          time = Time.local(now.year, now.month, now.day, 20, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15)
           expect(flexitime).to eq(time)
         end
 
@@ -778,7 +789,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("8:15")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
@@ -786,14 +797,14 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("8:15 PM")
-          time = Time.local(now.year, now.month, now.day, 20, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string with the time surrounded by white space" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("  08:15  ")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
       end
@@ -803,49 +814,49 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("08.15")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including uppercase AM" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08.15 AM")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including uppercase PM" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08.15 PM")
-          time = Time.local(now.year, now.month, now.day, 20, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including lowercase am" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08.15am")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including lowercase pm" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08.15pm")
-          time = Time.local(now.year, now.month, now.day, 20, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including AM without a space separator" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08.15AM")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string including PM without a space separator" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("08.15PM")
-          time = Time.local(now.year, now.month, now.day, 20, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15)
           expect(flexitime).to eq(time)
         end
 
@@ -853,7 +864,7 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("8.15")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
 
@@ -861,57 +872,54 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("8.15 PM")
-          time = Time.local(now.year, now.month, now.day, 20, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 20, 15)
           expect(flexitime).to eq(time)
         end
 
         it "returns a time for a string with the time surrounded by white space" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("  08.15  ")
-          time = Time.local(now.year, now.month, now.day, 8, 15)
+          time = Time.zone.local(now.year, now.month, now.day, 8, 15)
           expect(flexitime).to eq(time)
         end
       end
     end
 
-    context "when parsing the string using the time class" do
+    context "when parsing the string using Time.zone" do
       it "returns a time for a datetime string in dB format" do
-        expect(Flexitime).to receive(:time_class_parse).and_call_original
+        expect(Flexitime).to receive(:time_zone_parse).and_call_original
         flexitime = Flexitime.parse("2021-01-02T09:00:00+00:00")
-        time = Time.utc(2021, 1, 2, 9).getlocal
+        time = Time.utc(2021, 1, 2, 9).in_time_zone
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a datetime string with milliseconds" do
-        expect(Flexitime).to receive(:time_class_parse).and_call_original
+        expect(Flexitime).to receive(:time_zone_parse).and_call_original
         flexitime = Flexitime.parse("01/12/2021 18:30:45.036711")
-        time = Time.utc(2021, 12, 1, 18, 30).getlocal
+        time = Time.utc(2021, 12, 1, 18, 30).in_time_zone
         expect(flexitime).to eq(time)
       end
 
-      Flexitime.parse("01/06/2021 18:30:45.036711")
-
       it "returns a time for a date string in wordy format" do
-        expect(Flexitime).to receive(:time_class_parse).and_call_original
+        expect(Flexitime).to receive(:time_zone_parse).and_call_original
         flexitime = Flexitime.parse("2nd January 2021")
-        time = Time.local(2021, 1, 2)
+        time = Time.zone.local(2021, 1, 2)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a datetime string with the hour, minute and second separated by periods" do
-        # might not be the right time but test proves that with this time format the time class parse is used
-        expect(Flexitime).to receive(:time_class_parse).and_call_original
+        # might not be the right time but test proves that with this time format the time_zone_parse is used
+        expect(Flexitime).to receive(:time_zone_parse).and_call_original
         Flexitime.configuration.precision = :sec
         flexitime = Flexitime.parse("2021/11/12 08.15.30")
-        time = Time.local(2021, 11, 12)
+        time = Time.zone.local(2021, 11, 12)
         expect(flexitime).to eq(time)
       end
     end
 
-    context "when the time class is set to Time.zone for 'Europe/London'" do
+    context "when Time.zone is set to 'Europe/London'" do
       before do
         Time.zone = "Europe/London"
-        Flexitime.configuration.time_class = Time.zone
       end
 
       it "returns a time for a datetime string in British Summer Time (BST)" do
@@ -999,10 +1007,9 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when the time class is set to Time.zone for 'Australia/Sydney'" do
+    context "when Time.zone is set to 'Australia/Sydney'" do
       before do
         Time.zone = "Australia/Sydney"
-        Flexitime.configuration.time_class = Time.zone
       end
 
       it "returns a time for a datetime string in Australian Eastern Standard Time (AEST)" do
@@ -1030,10 +1037,9 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when the time class is set to Time.zone for 'America/New_York'" do
+    context "when Time.zone is set to 'America/New_York'" do
       before do
         Time.zone = "America/New_York"
-        Flexitime.configuration.time_class = Time.zone
       end
 
       it "returns a time for a datetime string in Eastern Daylight Time (EDT)" do
@@ -1061,10 +1067,9 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when the time class is set to Time.zone for 'UTC'" do
+    context "when Time.zone is set to 'UTC'" do
       before do
         Time.zone = "UTC"
-        Flexitime.configuration.time_class = Time.zone
       end
 
       it "returns a time for a datetime string" do
@@ -1099,31 +1104,31 @@ RSpec.describe Flexitime do
 
       it "returns a time for a date string with the date set based on the first date part" do
         flexitime = Flexitime.parse("01/08/2021")
-        time = Time.local(2021, 8, 1)
+        time = Time.zone.local(2021, 8, 1)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a datetime string with the date set based on the first date part" do
         flexitime = Flexitime.parse("01/08/2021 08:15")
-        time = Time.local(2021, 8, 1, 8, 15)
+        time = Time.zone.local(2021, 8, 1, 8, 15)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a date string with a 2 digit year based on the first date part" do
         flexitime = Flexitime.parse("01/08/21")
-        time = Time.local(2021, 8, 1)
+        time = Time.zone.local(2021, 8, 1)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a datetime string with a 2 digit year based on the first date part" do
         flexitime = Flexitime.parse("01/08/21 08:15")
-        time = Time.local(2021, 8, 1, 8, 15)
+        time = Time.zone.local(2021, 8, 1, 8, 15)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for an ISO 8601 formatted datetime string" do
         flexitime = Flexitime.parse("2021-08-01T08:15:30.144515Z")
-        time = Time.utc(2021, 8, 1, 8, 15).getlocal
+        time = Time.utc(2021, 8, 1, 8, 15).in_time_zone
         expect(flexitime).to eq(time)
       end
     end
@@ -1135,31 +1140,31 @@ RSpec.describe Flexitime do
 
       it "returns a time for a date string with the date set based on the first date part" do
         flexitime = Flexitime.parse("01/08/2021")
-        time = Time.local(2021, 1, 8)
+        time = Time.zone.local(2021, 1, 8)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a datetime string with the date set based on the first date part" do
         flexitime = Flexitime.parse("01/08/2021 08:15")
-        time = Time.local(2021, 1, 8, 8, 15)
+        time = Time.zone.local(2021, 1, 8, 8, 15)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a date string with a 2 digit year based on the first date part" do
         flexitime = Flexitime.parse("01/08/21")
-        time = Time.local(2021, 1, 8)
+        time = Time.zone.local(2021, 1, 8)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for a datetime string with a 2 digit year based on the first date part" do
         flexitime = Flexitime.parse("01/08/21 08:15")
-        time = Time.local(2021, 1, 8, 8, 15)
+        time = Time.zone.local(2021, 1, 8, 8, 15)
         expect(flexitime).to eq(time)
       end
 
       it "returns a time for an ISO 8601 formatted datetime string" do
         flexitime = Flexitime.parse("2021-08-01T08:15:30.144515Z")
-        time = Time.utc(2021, 8, 1, 8, 15).getlocal
+        time = Time.utc(2021, 8, 1, 8, 15).in_time_zone
         expect(flexitime).to eq(time)
       end
     end
@@ -1169,16 +1174,16 @@ RSpec.describe Flexitime do
         it "returns a time with a precision of :min" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           flexitime = Flexitime.parse("2021-08-23 12:35:20")
-          time = Time.local(2021, 8, 23, 12, 35)
+          time = Time.zone.local(2021, 8, 23, 12, 35)
           expect(flexitime).to eq(time)
         end
       end
 
-      context "when parsing the string using the time class" do
+      context "when parsing the string using Time.zone" do
         it "returns a time with a precision of :min" do
-          expect(Flexitime).to receive(:time_class_parse).and_call_original
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
           flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00")
-          time = Time.utc(2021, 8, 23, 12, 35).getlocal
+          time = Time.utc(2021, 8, 23, 12, 35).in_time_zone
           expect(flexitime).to eq(time)
         end
       end
@@ -1190,17 +1195,17 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :usec
           flexitime = Flexitime.parse("2021-08-23T12:35:20.533314Z")
-          time = Time.utc(2021, 8, 23, 12, 35, 20, 533314).getlocal
+          time = Time.utc(2021, 8, 23, 12, 35, 20, 533314).in_time_zone
           expect(flexitime).to eq(time)
         end
       end
 
-      context "when parsing the string using the time class" do
+      context "when parsing the string using Time.zone" do
         it "returns a time with a precision of :usec" do
-          expect(Flexitime).to receive(:time_class_parse).and_call_original
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
           Flexitime.configuration.precision = :usec
           flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00")
-          time = Time.utc(2021, 8, 23, 12, 35, 20, 533314).getlocal
+          time = Time.utc(2021, 8, 23, 12, 35, 20, 533314).in_time_zone
           expect(flexitime).to eq(time)
         end
       end
@@ -1212,17 +1217,17 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021-08-23T12:35:20.533314Z")
-          time = Time.utc(2021, 8, 23, 12, 35, 20).getlocal
+          time = Time.utc(2021, 8, 23, 12, 35, 20).in_time_zone
           expect(flexitime).to eq(time)
         end
       end
 
-      context "when parsing the string using the time class" do
+      context "when parsing the string using Time.zone" do
         it "returns a time with a precision of :sec" do
-          expect(Flexitime).to receive(:time_class_parse).and_call_original
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
           Flexitime.configuration.precision = :sec
           flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00")
-          time = Time.utc(2021, 8, 23, 12, 35, 20).getlocal
+          time = Time.utc(2021, 8, 23, 12, 35, 20).in_time_zone
           expect(flexitime).to eq(time)
         end
       end
@@ -1234,17 +1239,17 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :min
           flexitime = Flexitime.parse("2021-08-23 12:35:20")
-          time = Time.local(2021, 8, 23, 12, 35)
+          time = Time.zone.local(2021, 8, 23, 12, 35)
           expect(flexitime).to eq(time)
         end
       end
 
-      context "when parsing the string using the time class" do
+      context "when parsing the string using Time.zone" do
         it "returns a time with a precision of :min" do
-          expect(Flexitime).to receive(:time_class_parse).and_call_original
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
           Flexitime.configuration.precision = :min
           flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00")
-          time = Time.utc(2021, 8, 23, 12, 35).getlocal
+          time = Time.utc(2021, 8, 23, 12, 35).in_time_zone
           expect(flexitime).to eq(time)
         end
       end
@@ -1256,17 +1261,17 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :hour
           flexitime = Flexitime.parse("2021-08-23 12:35:20")
-          time = Time.local(2021, 8, 23, 12)
+          time = Time.zone.local(2021, 8, 23, 12)
           expect(flexitime).to eq(time)
         end
       end
 
-      context "when parsing the string using the time class" do
+      context "when parsing the string using Time.zone" do
         it "returns a time with a precision of :hour" do
-          expect(Flexitime).to receive(:time_class_parse).and_call_original
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
           Flexitime.configuration.precision = :hour
           flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00")
-          time = Time.utc(2021, 8, 23, 12).getlocal
+          time = Time.utc(2021, 8, 23, 12).in_time_zone
           expect(flexitime).to eq(time)
         end
       end
@@ -1278,17 +1283,17 @@ RSpec.describe Flexitime do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
           Flexitime.configuration.precision = :day
           flexitime = Flexitime.parse("2021-08-23 12:35:20")
-          time = Time.local(2021, 8, 23)
+          time = Time.zone.local(2021, 8, 23)
           expect(flexitime).to eq(time)
         end
       end
 
-      context "when parsing the string using the time class" do
+      context "when parsing the string using Time.zone" do
         it "returns a time with a precision of :day" do
-          expect(Flexitime).to receive(:time_class_parse).and_call_original
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
           Flexitime.configuration.precision = :day
           flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00")
-          time = Time.utc(2021, 8, 23).getlocal
+          time = Time.utc(2021, 8, 23).in_time_zone
           expect(flexitime).to eq(time)
         end
       end
@@ -1296,7 +1301,7 @@ RSpec.describe Flexitime do
 
     context "when the string contain a 2 digit year" do
       it "returns a time for a date string with the year set using the ambiguous year future bias of 10" do
-        allow(Flexitime.configuration.time_class).to receive(:now).and_return(Time.local(2020, 1, 1))
+        allow(Time.zone).to receive(:now).and_return(Time.zone.local(2020, 1, 1))
         Flexitime.configuration.ambiguous_year_future_bias = 10
         expect(Flexitime.parse("01/08/00").year).to eq(2100)
         expect(Flexitime.parse("01/08/09").year).to eq(2109)
@@ -1305,7 +1310,7 @@ RSpec.describe Flexitime do
       end
 
       it "returns a time for a date string with the year set using the ambiguous year future bias of 30" do
-        allow(Flexitime.configuration.time_class).to receive(:now).and_return(Time.local(2020, 1, 1))
+        allow(Time.zone).to receive(:now).and_return(Time.zone.local(2020, 1, 1))
         Flexitime.configuration.ambiguous_year_future_bias = 30
         expect(Flexitime.parse("01/08/00").year).to eq(2000)
         expect(Flexitime.parse("01/08/89").year).to eq(2089)
@@ -1314,7 +1319,7 @@ RSpec.describe Flexitime do
       end
 
       it "returns a time for a date string with the year set using the default ambiguous year future bias of 50" do
-        allow(Flexitime.configuration.time_class).to receive(:now).and_return(Time.local(2020, 1, 1))
+        allow(Time.zone).to receive(:now).and_return(Time.zone.local(2020, 1, 1))
         expect(Flexitime.parse("01/08/00").year).to eq(2000)
         expect(Flexitime.parse("01/08/69").year).to eq(2069)
         expect(Flexitime.parse("01/08/70").year).to eq(1970)
@@ -1322,7 +1327,7 @@ RSpec.describe Flexitime do
       end
 
       it "returns a time for a date string with the year set using the ambiguous year future bias of 70" do
-        allow(Flexitime.configuration.time_class).to receive(:now).and_return(Time.local(2020, 1, 1))
+        allow(Time.zone).to receive(:now).and_return(Time.zone.local(2020, 1, 1))
         Flexitime.configuration.ambiguous_year_future_bias = 70
         expect(Flexitime.parse("01/08/00").year).to eq(2000)
         expect(Flexitime.parse("01/08/49").year).to eq(2049)

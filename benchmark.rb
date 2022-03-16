@@ -25,14 +25,7 @@ Benchmark.bm(50) do |benchmark|
     end
   end
 
-  benchmark.report("Flexitime.parse (with Time) datetime YMD") do
-    n.times do
-      Flexitime.parse("2021-08-12 12:30")
-    end
-  end
-
-  benchmark.report("Flexitime.parse (with Time.zone) datetime YMD") do
-    Flexitime.time_class = Time.zone
+  benchmark.report("Flexitime.parse datetime YMD") do
     n.times do
       Flexitime.parse("2021-08-12 12:30")
     end
@@ -52,14 +45,7 @@ Benchmark.bm(50) do |benchmark|
     end
   end
 
-  benchmark.report("Flexitime.parse (with Time) datetime DMY HM") do
-    n.times do
-      Flexitime.parse("23/08/2021 12:30")
-    end
-  end
-
-  benchmark.report("Flexitime.parse (with Time.zone) datetime DMY HM") do
-    Flexitime.time_class = Time.zone
+  benchmark.report("Flexitime.parse datetime DMY HM") do
     n.times do
       Flexitime.parse("23/08/2021 12:30")
     end
@@ -79,14 +65,7 @@ Benchmark.bm(50) do |benchmark|
     end
   end
 
-  benchmark.report("Flexitime.parse (with Time) datetime DMY HMS") do
-    n.times do
-      Flexitime.parse("23/08/2021 12:30:45")
-    end
-  end
-
-  benchmark.report("Flexitime.parse (with Time.zone) datetime DMY HMS") do
-    Flexitime.time_class = Time.zone
+  benchmark.report("Flexitime.parse datetime DMY HMS") do
     n.times do
       Flexitime.parse("23/08/2021 12:30:45")
     end
@@ -106,14 +85,7 @@ Benchmark.bm(50) do |benchmark|
     end
   end
 
-  benchmark.report("Flexitime.parse (with Time) time HM") do
-    n.times do
-      Flexitime.parse("12:30")
-    end
-  end
-
-  benchmark.report("Flexitime.parse (with Time.zone) time HM") do
-    Flexitime.time_class = Time.zone
+  benchmark.report("Flexitime.parse time HM") do
     n.times do
       Flexitime.parse("12:30")
     end
@@ -133,14 +105,7 @@ Benchmark.bm(50) do |benchmark|
     end
   end
 
-  benchmark.report("Flexitime.parse (with Time) time HMS") do
-    n.times do
-      Flexitime.parse("12:30:45")
-    end
-  end
-
-  benchmark.report("Flexitime.parse (with Time.zone) time HMS") do
-    Flexitime.time_class = Time.zone
+  benchmark.report("Flexitime.parse time HMS") do
     n.times do
       Flexitime.parse("12:30:45")
     end

@@ -7,16 +7,6 @@ module Flexitime
   class Configuration
     # = Configuration options
     #
-    # == time_class
-    # The time class used to create the Time object
-    # defaulting to Time which will use the system local time zone.
-    # This can be set to ActiveSupport::TimeZone to create a Time object
-    # using the specified time zone
-    #
-    #   Time.zone = "Europe/London"
-    #   Flexitime.time_class = Time.zone
-    #   Flexitime.parse("01/06/2021 17:00") # => Tue, 01 Jun 2021 17:00:00.000000000 BST +01:00
-    #
     # == first_date_part
     # The first part of the date within the string, either :day or :month
     # This can be set manually otherwise when using the rails-I18n gem if the first element
@@ -55,12 +45,10 @@ module Flexitime
     #   Flexitime.parse("01/08/70").year # => 1970
     #   Flexitime.parse("01/08/99").year # => 1999
     #
-    attr_accessor :time_class
     attr_reader :precision
     attr_accessor :ambiguous_year_future_bias
 
     def initialize
-      @time_class = ::Time
       @first_date_part = nil
       @precision = :min
       @ambiguous_year_future_bias = 50

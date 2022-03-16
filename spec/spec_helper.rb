@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "flexitime"
-require "active_support/time" # Time.zone
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
