@@ -1097,7 +1097,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when the first date part is :day" do
+    context "when the configuration first date part is :day" do
       before do
         Flexitime.configuration.first_date_part = :day
       end
@@ -1133,7 +1133,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when the first date part is :month" do
+    context "when the configuration first date part is :month" do
       before do
         Flexitime.configuration.first_date_part = :month
       end
@@ -1169,7 +1169,93 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when using the default precision of :min" do
+    context "when using the argument first date part" do
+      it "parses the string and retains the configuration first date part setting" do
+        expect(Flexitime.configuration.first_date_part).to eq(:day)
+        flexitime = Flexitime.parse("01/08/2021", first_date_part: :month)
+        time = Time.zone.local(2021, 1, 8)
+        expect(flexitime).to eq(time)
+        expect(Flexitime.configuration.first_date_part).to eq(:day)
+      end
+
+      it "raises an error when the first date part is invalid" do
+        expect { Flexitime.parse("01/08/2021", first_date_part: :year) }.to raise_error(ArgumentError)
+      end
+    end
+
+    context "when the argument first date part is :day" do
+      before do
+        Flexitime.configuration.first_date_part = :month
+      end
+
+      it "returns a time for a date string with the date set based on the first date part" do
+        flexitime = Flexitime.parse("01/08/2021", first_date_part: :day)
+        time = Time.zone.local(2021, 8, 1)
+        expect(flexitime).to eq(time)
+      end
+
+      it "returns a time for a datetime string with the date set based on the first date part" do
+        flexitime = Flexitime.parse("01/08/2021 08:15", first_date_part: :day)
+        time = Time.zone.local(2021, 8, 1, 8, 15)
+        expect(flexitime).to eq(time)
+      end
+
+      it "returns a time for a date string with a 2 digit year based on the first date part" do
+        flexitime = Flexitime.parse("01/08/21", first_date_part: :day)
+        time = Time.zone.local(2021, 8, 1)
+        expect(flexitime).to eq(time)
+      end
+
+      it "returns a time for a datetime string with a 2 digit year based on the first date part" do
+        flexitime = Flexitime.parse("01/08/21 08:15", first_date_part: :day)
+        time = Time.zone.local(2021, 8, 1, 8, 15)
+        expect(flexitime).to eq(time)
+      end
+
+      it "returns a time for an ISO 8601 formatted datetime string" do
+        flexitime = Flexitime.parse("2021-08-01T08:15:30.144515Z", first_date_part: :day)
+        time = Time.utc(2021, 8, 1, 8, 15).in_time_zone
+        expect(flexitime).to eq(time)
+      end
+    end
+
+    context "when the argument first date part is :month" do
+      before do
+        Flexitime.configuration.first_date_part = :day
+      end
+
+      it "returns a time for a date string with the date set based on the first date part" do
+        flexitime = Flexitime.parse("01/08/2021", first_date_part: :month)
+        time = Time.zone.local(2021, 1, 8)
+        expect(flexitime).to eq(time)
+      end
+
+      it "returns a time for a datetime string with the date set based on the first date part" do
+        flexitime = Flexitime.parse("01/08/2021 08:15", first_date_part: :month)
+        time = Time.zone.local(2021, 1, 8, 8, 15)
+        expect(flexitime).to eq(time)
+      end
+
+      it "returns a time for a date string with a 2 digit year based on the first date part" do
+        flexitime = Flexitime.parse("01/08/21", first_date_part: :month)
+        time = Time.zone.local(2021, 1, 8)
+        expect(flexitime).to eq(time)
+      end
+
+      it "returns a time for a datetime string with a 2 digit year based on the first date part" do
+        flexitime = Flexitime.parse("01/08/21 08:15", first_date_part: :month)
+        time = Time.zone.local(2021, 1, 8, 8, 15)
+        expect(flexitime).to eq(time)
+      end
+
+      it "returns a time for an ISO 8601 formatted datetime string" do
+        flexitime = Flexitime.parse("2021-08-01T08:15:30.144515Z", first_date_part: :month)
+        time = Time.utc(2021, 8, 1, 8, 15).in_time_zone
+        expect(flexitime).to eq(time)
+      end
+    end
+
+    context "when using the default configuration precision of :min" do
       context "when parsing the string using regex" do
         it "returns a time with a precision of :min" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
@@ -1189,7 +1275,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when using the precision of :usec" do
+    context "when using the configuration precision of :usec" do
       context "when parsing the string using regex" do
         it "returns a time with a precision of :usec" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
@@ -1211,7 +1297,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when using the precision of :sec" do
+    context "when using the configuration precision of :sec" do
       context "when parsing the string using regex" do
         it "returns a time with a precision of :sec" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
@@ -1233,7 +1319,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when using the precision of :min" do
+    context "when using the configuration precision of :min" do
       context "when parsing the string using regex" do
         it "returns a time with a precision of :min" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
@@ -1255,7 +1341,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when using the precision of :hour" do
+    context "when using the configuration precision of :hour" do
       context "when parsing the string using regex" do
         it "returns a time with a precision of :hour" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
@@ -1277,7 +1363,7 @@ RSpec.describe Flexitime do
       end
     end
 
-    context "when using the precision of :day" do
+    context "when using the configuration precision of :day" do
       context "when parsing the string using regex" do
         it "returns a time with a precision of :day" do
           expect(Flexitime).to receive(:create_time_from_parts).and_call_original
@@ -1296,6 +1382,133 @@ RSpec.describe Flexitime do
           time = Time.utc(2021, 8, 23).in_time_zone
           expect(flexitime).to eq(time)
         end
+      end
+    end
+
+    context "when using the argument precision" do
+      it "parses the string and retains the configuration precision setting" do
+        expect(Flexitime.configuration.precision).to eq(:min)
+        flexitime = Flexitime.parse("2021-08-23T12:35:20.533314Z", precision: :sec)
+        time = Time.utc(2021, 8, 23, 12, 35, 20).in_time_zone
+        expect(flexitime).to eq(time)
+        expect(Flexitime.configuration.precision).to eq(:min)
+      end
+
+      it "raises an error when the precision is invalid" do
+        expect { Flexitime.parse("01/08/2021", precision: :minute) }.to raise_error(ArgumentError)
+      end
+    end
+
+    context "when using the argument precision of :usec" do
+      context "when parsing the string using regex" do
+        it "returns a time with a precision of :usec" do
+          expect(Flexitime).to receive(:create_time_from_parts).and_call_original
+          flexitime = Flexitime.parse("2021-08-23T12:35:20.533314Z", precision: :usec)
+          time = Time.utc(2021, 8, 23, 12, 35, 20, 533314).in_time_zone
+          expect(flexitime).to eq(time)
+        end
+      end
+
+      context "when parsing the string using Time.zone" do
+        it "returns a time with a precision of :usec" do
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
+          flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00", precision: :usec)
+          time = Time.utc(2021, 8, 23, 12, 35, 20, 533314).in_time_zone
+          expect(flexitime).to eq(time)
+        end
+      end
+    end
+
+    context "when using the argument precision of :sec" do
+      context "when parsing the string using regex" do
+        it "returns a time with a precision of :sec" do
+          expect(Flexitime).to receive(:create_time_from_parts).and_call_original
+          flexitime = Flexitime.parse("2021-08-23T12:35:20.533314Z", precision: :sec)
+          time = Time.utc(2021, 8, 23, 12, 35, 20).in_time_zone
+          expect(flexitime).to eq(time)
+        end
+      end
+
+      context "when parsing the string using Time.zone" do
+        it "returns a time with a precision of :sec" do
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
+          flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00", precision: :sec)
+          time = Time.utc(2021, 8, 23, 12, 35, 20).in_time_zone
+          expect(flexitime).to eq(time)
+        end
+      end
+    end
+
+    context "when using the argument precision of :min" do
+      before do
+        Flexitime.configuration.precision = :sec
+      end
+
+      context "when parsing the string using regex" do
+        it "returns a time with a precision of :min" do
+          expect(Flexitime).to receive(:create_time_from_parts).and_call_original
+          flexitime = Flexitime.parse("2021-08-23 12:35:20", precision: :min)
+          time = Time.zone.local(2021, 8, 23, 12, 35)
+          expect(flexitime).to eq(time)
+        end
+      end
+
+      context "when parsing the string using Time.zone" do
+        it "returns a time with a precision of :min" do
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
+          flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00", precision: :min)
+          time = Time.utc(2021, 8, 23, 12, 35).in_time_zone
+          expect(flexitime).to eq(time)
+        end
+      end
+    end
+
+    context "when using the argument precision of :hour" do
+      context "when parsing the string using regex" do
+        it "returns a time with a precision of :hour" do
+          expect(Flexitime).to receive(:create_time_from_parts).and_call_original
+          flexitime = Flexitime.parse("2021-08-23 12:35:20", precision: :hour)
+          time = Time.zone.local(2021, 8, 23, 12)
+          expect(flexitime).to eq(time)
+        end
+      end
+
+      context "when parsing the string using Time.zone" do
+        it "returns a time with a precision of :hour" do
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
+          flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00", precision: :hour)
+          time = Time.utc(2021, 8, 23, 12).in_time_zone
+          expect(flexitime).to eq(time)
+        end
+      end
+    end
+
+    context "when using the argument precision of :day" do
+      context "when parsing the string using regex" do
+        it "returns a time with a precision of :day" do
+          expect(Flexitime).to receive(:create_time_from_parts).and_call_original
+          flexitime = Flexitime.parse("2021-08-23 12:35:20", precision: :day)
+          time = Time.zone.local(2021, 8, 23)
+          expect(flexitime).to eq(time)
+        end
+      end
+
+      context "when parsing the string using Time.zone" do
+        it "returns a time with a precision of :day" do
+          expect(Flexitime).to receive(:time_zone_parse).and_call_original
+          flexitime = Flexitime.parse("2021-08-23T12:35:20.533314+00:00", precision: :day)
+          time = Time.utc(2021, 8, 23).in_time_zone
+          expect(flexitime).to eq(time)
+        end
+      end
+    end
+
+    context "when using the first date part and precision arguments" do
+      it "returns a time using the first date part and precision" do
+        Flexitime.configuration.precision = :sec
+        flexitime = Flexitime.parse("01/08/2021 08:15:30", first_date_part: :day, precision: :min)
+        time = Time.zone.local(2021, 8, 1, 8, 15)
+        expect(flexitime).to eq(time)
       end
     end
 

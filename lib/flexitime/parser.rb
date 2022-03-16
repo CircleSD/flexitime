@@ -22,23 +22,27 @@ module Flexitime
     # that use a period with hours & minutes
     HOUR_MINUTE_REGEX = %r{^(\d{1,2})[:.](\d{2})\s?([aApP][mM])?\.?$}
 
-    # Parse a String argument and create an ActiveSupport::TimeWithZone object
-    # using Time.zone and the desired precision.
+    # Parse a String argument and create an ActiveSupport::TimeWithZone object using Time.zone
+    #
+    # The parse uses either the argument or configuration first_date_part (:day or :month)
+    # and either the argument or configuration precision (:day, :hour, :min, :sec or :usec).
     #
     # When the String contains a date or date/time or time that matches the regular expressions
     # the Time.zone local method is used to create a TimeWithZone object
     # otherwise the Time.zone parse method is used to create a TimeWithZone object
     # and for an invalid date, date/time or time nil is returned.
-    def parse(str)
+    def parse(str, first_date_part: nil, precision: nil)
+      validate_options(first_date_part: first_date_part, precision: precision)
+
       str = str.is_a?(String) ? str : str.try(:to_str)
       return nil if str.blank?
 
-      parts = extract_parts(str)
+      parts = extract_parts(str, first_date_part: first_date_part)
 
       if parts.present?
-        create_time_from_parts(parts) if valid_date_parts?(parts)
+        create_time_from_parts(parts, precision: precision) if valid_date_parts?(parts)
       else
-        time_zone_parse(str)
+        time_zone_parse(str, precision: precision)
       end
     end
 
@@ -50,12 +54,21 @@ module Flexitime
       Time.zone
     end
 
+    # Ensure the parse method options are valid
+    # reusing the configuration class validation which raises an exception
+    def validate_options(first_date_part: nil, precision: nil)
+      return if first_date_part.blank? && precision.blank?
+      config = Configuration.new
+      config.first_date_part = first_date_part if first_date_part.present?
+      config.precision = precision if precision.present?
+    end
+
     # Extract date and time parts and return a Hash containing the parts
     # or nil if either the date or time string does not match a regex
-    def extract_parts(str)
+    def extract_parts(str, first_date_part: nil)
       date_str, time_str = separate_date_and_time(str)
 
-      date_parts = extract_date_parts(date_str)
+      date_parts = extract_date_parts(date_str, first_date_part: first_date_part)
 
       if date_parts.blank?
         now = time_zone.now
@@ -77,8 +90,8 @@ module Flexitime
       [parts.shift, parts.join(" ")]
     end
 
-    def extract_date_parts(str)
-      extract_iso_date_parts(str) || extract_local_date_parts(str)
+    def extract_date_parts(str, first_date_part: nil)
+      extract_iso_date_parts(str) || extract_local_date_parts(str, first_date_part: first_date_part)
     end
 
     def extract_iso_date_parts(str)
@@ -89,11 +102,12 @@ module Flexitime
       end
     end
 
-    def extract_local_date_parts(str)
+    def extract_local_date_parts(str, first_date_part: nil)
       # match array returns ["23-08-1973", "23", "08", "1973"]
       parts = str.match(LOCAL_DATE_REGEX).to_a.pop(3).map(&:to_i)
       if parts.present?
-        day, month = Flexitime.configuration.first_date_part == :day ? [parts.first, parts.second] : [parts.second, parts.first]
+        first_date_part ||= Flexitime.configuration.first_date_part
+        day, month = first_date_part == :day ? [parts.first, parts.second] : [parts.second, parts.first]
         {year: make_year(parts.third), month: month, day: day}
       end
     end
@@ -149,30 +163,32 @@ module Flexitime
     end
 
     # Create a TimeWithZone object object using only those parts required for the configuration precision
-    def create_time_from_parts(parts)
-      time = time_zone.local(*local_args_for_precision(parts))
+    def create_time_from_parts(parts, precision: nil)
+      time = time_zone.local(*local_args_for_precision(parts, precision: precision))
       parts[:utc] ? (time + time.utc_offset) : time
     rescue
     end
 
     # Returns the date/time parts required for the configuration precision
-    def local_args_for_precision(parts)
+    def local_args_for_precision(parts, precision: nil)
       keys = [:year, :month, :day, :hour, :min, :sec, :usec]
-      index = keys.index(Flexitime.configuration.precision)
+      precision ||= Flexitime.configuration.precision
+      index = keys.index(precision)
       keys[0..index].map { |key| parts[key] }
     end
 
     # Parse the string using Time.zone and set the configuration precision
-    def time_zone_parse(str)
+    def time_zone_parse(str, precision: nil)
       time = time_zone.parse(str)
-      set_precision(time)
+      set_precision(time, precision: precision)
     rescue
     end
 
     # Set the precision, first checking if this is necessary
     # to avoid the overhead of calling the change method
-    def set_precision(time)
-      index = PRECISIONS.index(Flexitime.configuration.precision)
+    def set_precision(time, precision: nil)
+      precision ||= Flexitime.configuration.precision
+      index = PRECISIONS.index(precision)
       dismiss_part = PRECISIONS[index + 1]
       excess = PRECISIONS[(index + 1)..-1].sum { |key| time.send(key) }
       excess > 0 ? time.change(dismiss_part => 0) : time
