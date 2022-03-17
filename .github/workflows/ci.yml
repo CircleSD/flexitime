@@ -22,6 +22,7 @@ jobs:
           - '2.6'
           - '2.7'
           - '3.0'
+          - '3.1'
         gemfile:
           - 'activesupport_4_0'
           - 'activesupport_4_1'
@@ -31,6 +32,7 @@ jobs:
           - 'activesupport_5_2'
           - 'activesupport_6_0'
           - 'activesupport_6_1'
+          - 'activesupport_7_0'
 
     env: # $BUNDLE_GEMFILE must be set at the job level, so it is set for all steps
       BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/${{ matrix.gemfile }}.gemfile

@@ -1,5 +1,17 @@
 # frozen_string_literal: true
 
+# Initiate code coverage but not when running appraisal
+# to prevent an error with activesupport 4.0
+# View test coverage report after running test suite by using the following command
+# > open coverage/index.html
+# https://github.com/simplecov-ruby/simplecov
+if ENV["APPRAISAL_INITIALIZED"].nil?
+  require "simplecov"
+  SimpleCov.start do
+    add_filter "/spec/"
+  end
+end
+
 require "flexitime"
 
 RSpec.configure do |config|

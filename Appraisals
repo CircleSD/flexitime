@@ -11,6 +11,10 @@
 # Run each appraisal in turn or a single appraisal:-
 # $ bundle exec appraisal rspec
 # $ bundle exec appraisal activesupport-6-1 rspec
+appraise "activesupport-7-0" do
+  gem "activesupport", "~> 7.0"
+end
+
 appraise "activesupport-6-1" do
   gem "activesupport", "~> 6.1"
 end

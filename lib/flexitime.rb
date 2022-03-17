@@ -5,6 +5,12 @@ require "forwardable"
 
 # Active Support Core Extensions
 # https://guides.rubyonrails.org/active_support_core_extensions.html
+begin
+  # workaround for activesupport 7.0
+  # ref: https://github.com/rails/rails/issues/43851
+  require "active_support/isolated_execution_state"
+rescue LoadError
+end
 require "active_support/time" # Time.zone
 require "active_support/core_ext/object/blank" # blank? and present?
 require "active_support/core_ext/array/access" # array second/third/fourth
